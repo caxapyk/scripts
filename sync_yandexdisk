@@ -1,4 +1,15 @@
 #!/bin/bash
+
+# This script backup all files from Yandex WebDav server to exernal   #
+# HDD, named "Time Machine" by Rclone utility. Use "rclone config" to #
+# add new remote.                                                     #
+# Rclone's sync command make source and dest identical, modifying des #
+# tination only. Files on remote server will not modified.            #
+# Here source is "YD:", destination is path to external HDD folder.   #
+# For more security deleted files (from source) on destination folder #
+# will moved to special folder by using --backup-dir option.          #
+# For more information go to https://rclone.org/commands/rclone_sync/ #
+
 rclone sync \
 YD: /Volumes/Time\ Machine/YandexDisk.backup/ \
 --backup-dir=/Volumes/Time\ Machine/YandexDisk.trash/ \
