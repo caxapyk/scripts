@@ -1,2 +1,2 @@
 # Shell scripts
-Linux shell scripts for my every day routine
+Linux shell scripts for my routine
