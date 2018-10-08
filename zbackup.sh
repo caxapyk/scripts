@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 
-# Archive all Zabbix files and grab data from MySQL using Percona XtraBackup.
+# Incremental backup of Zabbix MySQL/MariaDB database (using Percona XtraBackup) and Zabbix files (using Rsync).
 #
 # Alexander Sakharuk <saharuk.alexander@gmail.com>,  2018
 # Licensed under MIT licence
@@ -12,10 +12,10 @@
 #
 
 AUTOREMOVE=10
-LOGFILE="/var/log/zabbix/zbackup.log"
+LOGFILE="/var/log/zbackup.log"
 DBUSER="zabbix"
 DBPASS="zabbix"
-TEMPDIR="/tmp"
+TEMPDIR="/tmp/zbackup"
 
 TIMESTAMP=$(date +%d-%m-%Y_%H-%M-%S)
 
@@ -34,19 +34,28 @@ OPTIONS
 -a <days>		Auto remove old backups after ? days (default: 10). 
 -d <dir>		Path to backup
 -h			Print help
--l <path>		Path to log file (default: /var/log/zabbix/zbackup.log) 	
--t <path>		Path to temp directory (default: /tmp) 	
+-l <path>		Path to log file (default: /var/log/zbackup.log) 	
+-t <path>		Temp directory with incremental backup (default: /tmp/zbackup) 	
 -u <username> 		MySQL user
 -p <pass>		MySQL password
 
 EOF
+exit 0;
 }
 
 # Function remove all temp folders created by this script
 function ClearTemp() {
 	if [[ -d $TEMPDIR ]]; then
-		rm -rf $TEMPDIR/zbackup-* 2>>$OGFILE
+		rm -rf $TEMPDIR 2>>$OGFILE
 	fi
+}
+
+# Funtion prints fatal error and returns exit code.
+function exitErr() {
+	echo "${TIMESTAMP} ERROR: $1" >&2 >>$LOGFILE
+	echo -e "Zbackup failed. See logfile (${LOGFILE}):"
+	cat $LOGFILE
+        exit 1
 }
 
 if [[ $# -eq 0 ]]; then PrintHelp; exit 0; fi 
@@ -55,21 +64,75 @@ if [[ $# -eq 0 ]]; then PrintHelp; exit 0; fi
 # PARSE OPTONS
 #
 
-while getopts "a:d:hl:t:u:p:" opt; do
+while getopts ":a:d:hl:t:u:p:" opt; do
 	case $opt in
-		a) AUTOREMOVE="${OPTARG}" ;;
-		d) BACKUPDIR="${OPTARG}" ;;
-		h) PrintHelp ;;
-		l) LOGFILE="${OPTARG}" ;;
-		t) TEMPDIR="${OPTARG}" ;;
-		u) DBUSER="${OPTARG}" ;;
-		p) DBPASS="${OPTARG}" ;;
+		a) AUTOREMOVE="${OPTARG}"
+		;;
+		d) BACKUPDIR="${OPTARG}"
+		;;
+		l) LOGFILE="${OPTARG}"
+		;;
+		t) TEMPDIR="${OPTARG}"
+		;;
+		u) DBUSER="${OPTARG}"
+		;;
+		p) DBPASS="${OPTARG}"
+		;;
+		h) PrintHelp
+		;;
+		/?) echo "Invalid option ${OPTARG}" >&2
+		;;
 	esac
 done
 
-# Create temp folder
-if ! mkdir $TEMPDIR; then echo "${TIMESTAMP} ERROR: Can not create temp folder ${TEMPDIR}" >&2 >>$LOGFILE; exit 1; fi 
-# Start backup
-echo "Backup started."
+#
+# PRE-ACTIONS
+#
 
-if [[ -z "${BACKUPDIR}" ]]; then echo "ERROR: You must provide backup directory path. Use option -d <dir>." >&2 >>$LOGFILE exit 1; fi
+# Clean log file
+echo "${TIMESTAMP} zbackup script started." > $LOGFILE
+
+# Check backup directory exists
+if [[ ! -d "$BACKUPDIR" ]]; then
+	exitErr "You must provide valid backup directory path. Use option -d <dir>."
+fi
+
+# Create temp folder structure
+if ! mkdir -p $TEMPDIR \
+	"${TEMPDIR}/var/lib/mysql" \
+	"${TEMPDIR}/etc/zabbix" \
+	"${TEMPDIR}/usr/lib/zabbix" \
+	"${TEMPDIR}/usr/share/zabbix"; 
+then
+	exitErr "Can't create temp directory: ${TEMPDIR}"
+fi 
+
+#
+# BACKUP
+#
+
+echo "Backup started..."
+
+# Step 01: backup DB with Percona XtraBackup
+if [[ -x "$(command -v extrabackup)" ]]; then
+	
+	xtrabackup --backup \
+		--user="${DBUSER}" \
+		--password="${DBPASS}" \
+		--no-timestamp \
+		--target-dir="${TEMPDIR}/var/lib/mysql"\
+		--datadir=/var/lib/mysql/ 1>&2 >>$LOGFILE	
+	xtrabackup --prepare \
+		--apply-log-only \
+		--target-dir="${TEMPDIR}" 1>&2 >>$LOGFILE
+else
+	exitErr "'extrabackup' utility not found."
+fi
+
+# Step 02: sync zabbix files
+rsync -avz /etc/zabbix/ "${TEMPDIR}/etc/zabbix"
+rsync -avz /usr/lib/zabbix "${TEMPDIR}/usr/lib/zabbix"
+rsync -avz /usr/share/zabbix "${TEMPDIR}/usr/share/zabbix"
+
+# Step 03: archiving
+tar -czvf "${BACKUPDIR}/zbackup-${TIMESTAMP}.tar.gz" -C $TEMPDIR . 1>&2 >>$LOGFILE
