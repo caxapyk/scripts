@@ -157,7 +157,7 @@ fi
 
 # Step 04: remove old backups
 echo "(4/4) Remove old backups..." | tee -a $LOG
-find $BAKDIR -mmin +$AUTOREMOVE -type f -delete -print &>>$LOG
+find $BAKDIR -mtime +$AUTOREMOVE -type f -delete -print &>>$LOG
 
 # Finish
 echo -e "`date +%d-%m-%Y_%H:%M:%S` Backup has been created." \
