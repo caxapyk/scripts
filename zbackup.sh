@@ -18,6 +18,7 @@ DBPASS="zabbix"
 TEMPDIR="/tmp/zbackup"
 
 TIMESTAMP=$(date +%d-%m-%Y_%H-%M-%S)
+TARFILE="zbackup-${TIMESTAMP}.tar.gz"
 
 #
 # FUNCTIONS
@@ -47,7 +48,7 @@ exit 0;
 # Function remove all temp folders created by this script
 function DeleteTemp() {
 	if [[ -d $TEMPDIR ]]; then
-		rm -rf $TEMPDIR 2>>$LOG 
+		rm -rf $TEMPDIR/* 2>>$LOG 
 	fi
 }
 
@@ -121,7 +122,7 @@ echo "`date +%d-%m-%Y_%H:%M:%S` Backup started..." | tee -a $LOG
 
 # Step 01: backup DB with Percona XtraBackup
 if [[ -x "$(command -v xtrabackup)" ]]; then
-	echo "MySQL backup..." | tee -a $LOG
+	echo "(1/4) MySQL backup..." | tee -a $LOG
 
 	service zabbix-server stop 2>>$LOG
 
@@ -141,18 +142,23 @@ else
 fi
 
 # Step 02: sync zabbix files
-echo "Copying Zabbix files..." | tee -a $LOG
+echo "(2/4) Copying Zabbix files..." | tee -a $LOG
 rsync -avz /etc/zabbix "${TEMPDIR}/etc/" &>>$LOG
 rsync -avz /usr/lib/zabbix "${TEMPDIR}/usr/lib/" &>>$LOG
 rsync -avz /usr/share/zabbix "${TEMPDIR}/usr/share/" &>>$LOG
 
 # Step 03: archiving
-echo "Archiving..." | tee -a $LOG
-tar -czvf "${BAKDIR}/zbackup-${TIMESTAMP}.tar.gz" -C $TEMPDIR . &>>$LOG
+echo "(3/4) Archiving..." | tee -a $LOG
+if [[ -w $BAKDIR ]]; then
+	tar -czvf "${BAKDIR}/${TARFILE}" -C $TEMPDIR . &>>$LOG
+else
+	exitErr "Can't archive data. No access.";
+fi
 
-# Step 04: cleaning up
-echo "Finishing backup..." | tee -a $LOG
-DeleteTemp;
-find $BAKDIR -mtime +10 -type f -exec rm -rf {} \;
+# Step 04: remove old backups
+echo "(4/4) Remove old backups..." | tee -a $LOG
+find $BAKDIR -mmin +$AUTOREMOVE -type f -delete -print &>>$LOG
 
-echo "`date +%d-%m-%Y_%H:%M:%S` Backup has been created." | tee -a $LOG
+# Finish
+echo -e "`date +%d-%m-%Y_%H:%M:%S` Backup has been created." \
+	"\n`stat "${BAKDIR}/${TARFILE}"`"| tee -a $LOG
