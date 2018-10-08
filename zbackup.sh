@@ -32,7 +32,7 @@ Usage: zbackup [opts]
 
 OPTIONS
 -a <days>		Auto remove old backups after ? days (default: 10). 
--d <dir>		Path to backup
+-d <path>		Backup directory
 -h			Print help
 -l <path>		Path to log file (default: /var/log/zbackup.log) 	
 -t <path>		Temp directory with incremental backup (default: /tmp/zbackup) 	
@@ -53,8 +53,8 @@ function ClearTemp() {
 # Funtion prints fatal error and returns exit code.
 function exitErr() {
 	echo "${TIMESTAMP} ERROR: $1" >&2 >>$LOGFILE
-	echo -e "Zbackup failed. See logfile (${LOGFILE}):"
-	cat $LOGFILE
+	echo -e "Zbackup failed. See logfile):" \
+		"\ncat ${LOGFILE}"
         exit 1
 }
 
@@ -115,7 +115,9 @@ echo "Backup started..."
 
 # Step 01: backup DB with Percona XtraBackup
 if [[ -x "$(command -v extrabackup)" ]]; then
-	
+
+	service zabbix-server stop 2>>$LOGFILE
+
 	xtrabackup --backup \
 		--user="${DBUSER}" \
 		--password="${DBPASS}" \
@@ -125,6 +127,9 @@ if [[ -x "$(command -v extrabackup)" ]]; then
 	xtrabackup --prepare \
 		--apply-log-only \
 		--target-dir="${TEMPDIR}" 1>&2 >>$LOGFILE
+
+	service zabbix-server start 2>>$LOGFILE
+
 else
 	exitErr "'extrabackup' utility not found."
 fi
