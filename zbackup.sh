@@ -13,7 +13,7 @@
 # # Make backup to /backup with 'zabbix:zabbix' credentials
 # zbackup -d /backup
 # # Add zbackup to crontab. Run from root required. sudo crontab -e
-# 00 01 * * * /<path to zbackup>/zbackup.sh -d <path> -u <dbusername> -p <dbp@ssw0rd>
+# * * * * * /<path to zbackup>/zbackup.sh -d <path> -u <dbusername> -p <dbp@ssw0rd>
 #
 
 #
