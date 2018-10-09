@@ -13,9 +13,9 @@
 # # Make backup to /backup with 'zabbix:zabbix' credentials
 # zbackup -d /backup
 # # Add zbackup to crontab. Run from root required. sudo crontab -e
-# 00 01 * * * /<path to zbackup>/zbackup.sh -d <path> -u <dbusername> -p <dbp@ssw0rd>
+# 00 01 * * * /<path to zbackup>/zbackup.sh -d <path> -u <dbusername> -p <dbp@ssw0rd> 2>/dev/null
 # # Add zbackup to crontab with logging
-# 00 01 * * * /<path to zbackup>/zbackup.sh -d <path> -u <dbusername> -p <dbp@ssw0rd> &> /<path to logfile>/zbackup.log
+# 00 01 * * * /<path to zbackup>/zbackup.sh -d <path> -u <dbusername> -p <dbp@ssw0rd> &> /<path to logfile>/zbackup.log 2>/dev/null
 #
 
 #
@@ -91,8 +91,8 @@ fi
 
 # Remove temp
 if [[ -d $TEMPDIR ]]; then
-	rm -rf "${TEMPDIR}" 2>&1
-	if [ $? -ne 0 ]; then echo "ERROR while trying to remove temp"; exit 1; fi
+	rm -rf "${TEMPDIR}"
+	if [ $? -ne 0 ]; then echo "ERROR while trying to remove temp"; >&2 exit 1; fi
 fi
 
 # Check backup directory exists
@@ -102,7 +102,7 @@ if [[ ! -d "$BAKDIR" ]]; then
 fi
 
 # Create temp folder structure
-mkdir -pv "${TEMPDIR}" \
+mkdir -p "${TEMPDIR}" \
 	"${TEMPDIR}/var/lib/mysql" \
 	"${TEMPDIR}/etc" \
 	"${TEMPDIR}/usr/lib" \
