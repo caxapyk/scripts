@@ -12,6 +12,10 @@
 # zbackup -d . -u <dbusername> -p <dbp@s$w0rd>
 # # Make backup to /backup with 'zabbix:zabbix' credentials
 # zbackup -d /backup
+# # Add zbackup to crontab. Run from root required. sudo crontab -e
+# 00 01 * * * /<path to zbackup>/zbackup.sh -d <path> -u <dbusername> -p <dbp@ssw0rd>
+# # Add zbackup to crontab with logging
+# 00 01 * * * /<path to zbackup>/zbackup.sh -d <path> -u <dbusername> -p <dbp@ssw0rd> &> /<path to logfile>/zbackup.log
 #
 
 #
@@ -153,7 +157,7 @@ if [ $? -ne 0 ]; then echo "ERROR: archivation failed." >&2; exit 1; fi
 # Step 04: remove old backups
 echo "(4/4) Remove old backups..."
 
-find "${BAKDIR}" -mmin +"${AUTOREMOVE}" -type f -delete -print
+find "${BAKDIR}" -mtime +"${AUTOREMOVE}" -type f -delete -print
 
 if [ $? -ne 0 ]; then echo "WARNING: autoremove old backups failed."; fi
 
