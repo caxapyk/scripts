@@ -12,15 +12,17 @@
 # zbackup -d . -u <dbusername> -p <dbp@s$w0rd>
 # # Make backup to /backup with 'zabbix:zabbix' credentials
 # zbackup -d /backup
-# # Add zbackup to crontab. Run from root required. sudo crontab -e
-# * * * * * /<path to zbackup>/zbackup.sh -d <path> -u <dbusername> -p <dbp@ssw0rd>
+# # Add zbackup to cron (root priveleges required: sudo crontab -e)
+# 0 0 * * * /<path to zbackup>/zbackup.sh -d <path> -u <dbusername> -p <dbp@ssw0rd>
+# # Add zbackup to cron, remove old backups after 30 days (as root, look abow)
+# 0 0 * * * /<path to zbackup>/zbackup.sh -d <path> -u <dbusername> -p <dbp@ssw0rd> -r 30
 #
 
 #
 # DEFAULTS
 #
 
-AUTOREMOVE=10
+RDAYS=10
 DBUSER="zabbix"
 DBPASS="zabbix"
 TEMPDIR="/tmp/zbackup"
@@ -41,9 +43,9 @@ Zabbix backup script (Version 0.1)
 Usage: zbackup [opts]
 
 OPTIONS
--a <days>		Auto remove old backups after ? days (default: 10). 
 -d <path>		Backup directory
 -h			Print help
+-r <days>		Auto remove old backups after ? days (default: 10). 
 -t <path>		Temp directory (default: /tmp/zbackup) 	
 -u <username> 		MySQL user
 -p <pass>		MySQL password
@@ -58,11 +60,11 @@ if [[ $# -eq 0 ]]; then PrintHelp; exit 0; fi
 # PARSE OPTONS
 #
 
-while getopts ":a:d:hl:t:u:p:" opt; do
+while getopts ":d:h:r:t:u:p:" opt; do
 	case $opt in
-		a) AUTOREMOVE="${OPTARG}"
-		;;
 		d) BAKDIR="${OPTARG}"
+		;;
+		a) RDAYS="${OPTARG}"
 		;;
 		t) TEMPDIR="${OPTARG}"
 		;;
@@ -159,7 +161,7 @@ if [ $? -ne 0 ]; then echo "ERROR: archivation failed." >>$LOGF; exit 1; fi
 # Step 04: remove old backups
 echo "(4/4) Remove old backups" | tee -a "${LOGF}"
 
-find "${BAKDIR}" -mtime +"${AUTOREMOVE}" -type f -delete -print &>>$LOGF
+find "${BAKDIR}" -mtime +"${RDAYS}" -type f -delete -print &>>$LOGF
 
 if [ $? -ne 0 ]; then echo "WARNING: autoremove old backups failed." >>$LOGF; fi
 
