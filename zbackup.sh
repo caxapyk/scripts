@@ -12,9 +12,9 @@
 # zbackup -d . -u <dbusername> -p <dbp@s$w0rd>
 # # Make backup to /backup with 'zabbix:zabbix' credentials
 # zbackup -d /backup
-# # Add zbackup to cron (root priveleges required: sudo crontab -e)
+# # Add zbackup to cron (crontab -e)
 # 0 0 * * * /<path to zbackup>/zbackup.sh -d <path> -u <dbusername> -p <dbp@ssw0rd>
-# # Add zbackup to cron, remove old backups after 30 days (as root, look abow)
+# # Add zbackup to cron, remove old backups after 30 days (crontab -e)
 # 0 0 * * * /<path to zbackup>/zbackup.sh -d <path> -u <dbusername> -p <dbp@ssw0rd> -r 30
 #
 
