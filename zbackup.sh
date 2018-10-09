@@ -26,7 +26,7 @@ DBPASS="zabbix"
 TEMPDIR="/tmp/zbackup"
 LOGF="/var/log/zbackup.log"
 
-TIMESTAMP=$(date +%d-%m-%Y_%H-%M-%S)
+TIMESTAMP=$(date +%d-%m-%Y_%H-%M)
 TARFILE="zbackup-${TIMESTAMP}.tar.gz"
 
 #
@@ -80,6 +80,9 @@ done
 #
 # PRE-ACTIONS
 #
+
+# Renew logfile
+echo "${TIMESTAMP} Backup started" > $LOGF
 
 # Check Percona XtraBackup installed
 if [[ ! -x "$(command -v xtrabackup)" ]]; then 
