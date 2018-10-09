@@ -13,9 +13,7 @@
 # # Make backup to /backup with 'zabbix:zabbix' credentials
 # zbackup -d /backup
 # # Add zbackup to crontab. Run from root required. sudo crontab -e
-# 00 01 * * * /<path to zbackup>/zbackup.sh -d <path> -u <dbusername> -p <dbp@ssw0rd> 2>/dev/null
-# # Add zbackup to crontab with logging
-# 00 01 * * * /<path to zbackup>/zbackup.sh -d <path> -u <dbusername> -p <dbp@ssw0rd> &> /<path to logfile>/zbackup.log 2>/dev/null
+# 00 01 * * * /<path to zbackup>/zbackup.sh -d <path> -u <dbusername> -p <dbp@ssw0rd>
 #
 
 #
@@ -26,6 +24,7 @@ AUTOREMOVE=10
 DBUSER="zabbix"
 DBPASS="zabbix"
 TEMPDIR="/tmp/zbackup"
+LOGF="/var/log/zbackup.log"
 
 TIMESTAMP=$(date +%d-%m-%Y_%H-%M-%S)
 TARFILE="zbackup-${TIMESTAMP}.tar.gz"
@@ -73,7 +72,7 @@ while getopts ":a:d:hl:t:u:p:" opt; do
 		;;
 		h) PrintHelp
 		;;
-		/?) echo "Invalid option ${OPTARG}" >&2
+		/?) echo "Invalid option ${OPTARG}" >>$LOGF
 		;;
 	esac
 done
@@ -84,20 +83,20 @@ done
 
 # Check Percona XtraBackup installed
 if [[ ! -x "$(command -v xtrabackup)" ]]; then 
-	echo "ERROR: 'extrabackup' utility not found." \
-	       "\n Go to https://www.percona.com/doc/percona-xtrabackup/LATEST/installation.html" >&2 
+	echo "ERROR: 'extrabackup' utility not found." >>$LOGF
+	printf "\n Go to https://www.percona.com/doc/percona-xtrabackup/LATEST/installation.html"
 	exit 1
 fi
 
 # Remove temp
 if [[ -d $TEMPDIR ]]; then
-	rm -rf "${TEMPDIR}"
-	if [ $? -ne 0 ]; then echo "ERROR while trying to remove temp"; >&2 exit 1; fi
+	rm -rf "${TEMPDIR}" 2>>$LOGF
+	if [ $? -ne 0 ]; then echo "ERROR while trying to remove temp"; >>$LOGF exit 1; fi
 fi
 
 # Check backup directory exists
 if [[ ! -d "$BAKDIR" ]]; then
-       echo "ERROR: you must provide valid backup directory path. Use option -d <dir>." >&2
+       echo "ERROR: you must provide valid backup directory path. Use option -d <dir>." >>$LOGF
        exit 1
 fi
 
@@ -106,62 +105,62 @@ mkdir -p "${TEMPDIR}" \
 	"${TEMPDIR}/var/lib/mysql" \
 	"${TEMPDIR}/etc" \
 	"${TEMPDIR}/usr/lib" \
-	"${TEMPDIR}/usr/share"
+	"${TEMPDIR}/usr/share" 2>>$LOGF
 
-if [ $? -ne 0 ]; then echo "ERROR while trying to create temp directory: ${TEMPDIR}" >&2; exit 1; fi
+if [ $? -ne 0 ]; then echo "ERROR while trying to create temp directory: ${TEMPDIR}" >>$LOGF; exit 1; fi
 
 #
 # BACKUP
 #
 
 # Step 01: backup DB with Percona XtraBackup
-echo "(1/4) MySQL backup"
+echo "(1/4) MySQL backup" | tee -a "${LOGF}"
 
 # Make a backup and place it in xtrabackup --target-dir
 xtrabackup --backup \
 	--user="${DBUSER}" \
 	--password="${DBPASS}" \
 	--no-timestamp \
-	--target-dir="${TEMPDIR}/var/lib/mysql"
+	--target-dir="${TEMPDIR}/var/lib/mysql" &>>$LOGF
 
-if [ $? -ne 0 ]; then echo "ERROR: exrabackup returned the error code. Database backup failed." >&2; exit 1; fi
+if [ $? -ne 0 ]; then echo "ERROR: exrabackup returned the error code. Database backup failed." >>$LOGF; exit 1; fi
 
 # Makes xtrabackup perform recovery on a backup so that it is ready to use
 xtrabackup --prepare \
 	--apply-log-only \
-	--target-dir="${TEMPDIR}/var/lib/mysql"
+	--target-dir="${TEMPDIR}/var/lib/mysql" &>>$LOGF
 
-if [ $? -ne 0 ]; then echo "ERROR: exrabackup returned error code. Database preparation failed." >&2; exit 1; fi
+if [ $? -ne 0 ]; then echo "ERROR: exrabackup returned error code. Database preparation failed." >>$LOGF; exit 1; fi
 
 # Step 02: sync zabbix files
-echo "(2/4) Copying Zabbix files"
+echo "(2/4) Copying Zabbix files" | tee -a "${LOGF}"
 
-rsync -avz /etc/zabbix "${TEMPDIR}/etc/" &&
-rsync -avz /usr/lib/zabbix "${TEMPDIR}/usr/lib/" &&
-rsync -avz /usr/share/zabbix "${TEMPDIR}/usr/share/"
+rsync -avz /etc/zabbix "${TEMPDIR}/etc/" &>>$LOGF &&
+rsync -avz /usr/lib/zabbix "${TEMPDIR}/usr/lib/" &>>$LOGF &&
+rsync -avz /usr/share/zabbix "${TEMPDIR}/usr/share/" &>>$LOGF
 
-if [ $? -ne 0 ]; then echo "ERROR while trying to synchronize Zabbix files:" >&2; exit 1; fi
+if [ $? -ne 0 ]; then echo "ERROR while trying to synchronize Zabbix files:" >>$LOGF; exit 1; fi
 
 # Step 03: archiving
-echo "(3/4) Archiving..."
+echo "(3/4) Archiving..." | tee -a "${LOGF}"
 
 if [[ ! -w $BAKDIR ]]; then
-	echo "ERROR: No access to backup directory."
+	echo "ERROR: No access to backup directory." >>$LOGF
 	exit 1
 fi
 
-tar -czvf "${BAKDIR}/${TARFILE}" -C "${TEMPDIR}" .
+tar -czvf "${BAKDIR}/${TARFILE}" -C "${TEMPDIR}" . &>>$LOGF
 
-if [ $? -ne 0 ]; then echo "ERROR: archivation failed." >&2; exit 1; fi
+if [ $? -ne 0 ]; then echo "ERROR: archivation failed." >>$LOGF; exit 1; fi
 
 # Step 04: remove old backups
-echo "(4/4) Remove old backups..."
+echo "(4/4) Remove old backups" | tee -a "${LOGF}"
 
-find "${BAKDIR}" -mtime +"${AUTOREMOVE}" -type f -delete -print
+find "${BAKDIR}" -mtime +"${AUTOREMOVE}" -type f -delete -print &>>$LOGF
 
-if [ $? -ne 0 ]; then echo "WARNING: autoremove old backups failed."; fi
+if [ $? -ne 0 ]; then echo "WARNING: autoremove old backups failed." >>$LOGF; fi
 
 # Done
-echo -e "Backup completed.\n$(stat "${BAKDIR}/${TARFILE}")"
+echo -e "Backup completed.\n$(stat "${BAKDIR}/${TARFILE}")" | tee -a "${LOGF}"
 
 exit
