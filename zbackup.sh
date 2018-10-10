@@ -168,4 +168,4 @@ if [ $? -ne 0 ]; then echo "WARNING: autoremove old backups failed." >>$LOGF; fi
 # Done
 echo -e "Backup completed.\n$(stat "${BAKDIR}/${TARFILE}")" | tee -a "${LOGF}"
 
-exit
+exit 0
