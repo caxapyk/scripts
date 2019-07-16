@@ -1,11 +1,13 @@
-# Run this PS script each hour at 
-# AD Server scheduler 
+# Create security groups with name AutoShutdownAt[hour]
+# at default Computers OU (or change $DN). 
+# Then run this PS script each hour at 
+# AD Server Scheduler 
 #
 # Alexander Sakharuk <saharuk.alexander@gmail.com>
 # https://github.com/caxapyk
 #
 
-$DN = "CN=Computers, DC=arsenal-orel, DC=ru"
+$DN = "CN=Computers, DC=example, DC=com"
 
 for($i=0; $i -le 23; $i++){
     $date = Get-Date -UFormat '%H'
