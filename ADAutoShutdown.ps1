@@ -1,5 +1,5 @@
-# Put this PS script to AD Server scheduler 
-# from 6 to 23 or easily to run it each hour
+# Run this PS script each hour at 
+# AD Server scheduler 
 #
 # Alexander Sakharuk <saharuk.alexander@gmail.com>
 # https://github.com/caxapyk
