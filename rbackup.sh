@@ -21,24 +21,6 @@ echo -e "${TIMESTAMP} Backup started" | tee "${LOGFILE}"
 
 # Rsync
 rsync -avz \
-        --exclude=efp/* \
-        --exclude=emk/* \
-        --exclude=data/* \
-        --exclude=share/Бухгалтерия/* \
-        --exclude=share/Генеалогия/* \
-        --exclude=share/ГХФ/* \
-        --exclude=share/Директор/* \
-        --exclude=share/ЗамДиректора/* \
-        --exclude=share/Инженер/* \
-        --exclude=share/НСА/* \
-        --exclude=share/ОИиПД/* \
-        --exclude=share/ОКВАиД/* \
-        --exclude=share/ООСД/* \
-        --exclude=share/ОПОД/* \
-        --exclude=share/Сайт/* \
-        --exclude=share/Секретарь/* \
-        --exclude=share/СтСправок/* \
-        --exclude=share/ЧитЗал/* \
         --delete \
         --stats \
         --progress \
