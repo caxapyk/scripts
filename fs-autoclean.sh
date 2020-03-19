@@ -9,8 +9,8 @@
 # 0 19 * * * /<path>/fs-autoclean.sh
 #
 
-FSPATH="/mnt/smb/share"
-FSLOG="/mnt/smb/data/fs-autoclean.log"
+FSPATH="/path/to/clean/folder"
+FSLOG="/var/log/fs-autoclean.log"
 RDAYS=7
 
 # First clean files modified more then N days ago, then clean empty 
