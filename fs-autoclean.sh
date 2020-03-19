@@ -6,7 +6,7 @@
 # Licensed under MIT licence
 #
 # Add to crontab (crontab -e)
-# 0 19 * * * /<path>/fs-autoclean.sh
+# 0 0 * * * /<path>/fs-autoclean.sh
 #
 
 FSPATH="/path/to/clean/folder"
